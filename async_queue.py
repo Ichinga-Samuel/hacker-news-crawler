@@ -22,7 +22,6 @@ class AsyncQueue:
             res = await self.api.get_user(user_id=user_id)
             self.visited.add(res['id'])
             self.task_queue.add(item=QueueItem(self.db.save_user, data=res), must_complete=True, priority=3)
-
             if submissions := res.get('submitted'):
                 [self.task_queue.add(item=QueueItem(self.get_item, item_id=item)) for item in submissions]
         except Exception as err:
@@ -77,7 +76,7 @@ class AsyncQueue:
 if __name__ == '__main__':
     logging.basicConfig(level=logging.INFO)
     async def main(mode: Literal['traverse', 'walk_back'] = 'traverse'):
-        async_queue = AsyncQueue(timeout=120, workers=1200, worker_timeout=60)
+        async_queue = AsyncQueue(timeout=60, workers=100)
 
         match mode:
             case 'traverse':
