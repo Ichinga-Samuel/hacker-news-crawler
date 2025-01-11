@@ -48,14 +48,14 @@ class AsyncQueue:
         except Exception as err:
             print(err)
 
-    async def traverse_api(self, timeout: int = 0):
+    async def traverse_api(self, timeout: int = None):
         try:
             s, j, t, a, b, n = await asyncio.gather(self.api.show_stories(), self.api.job_stories(), self.api.top_stories(),
                                               self.api.ask_stories(), self.api.best_stories(), self.api.new_stories())
             stories = set(s) | set(j) | set(t) | set(a) | set(b) | set(n)
             logger.info("Traversing %s stories", len(stories))
             [self.task_queue.add(item=QueueItem(self.get_item, item_id=item), priority=0) for item in stories]
-            await self.task_queue.run(timeout=timeout)
+            await self.task_queue.run(queue_timeout=timeout)
             print(f"Made {len(self.visited)} API calls.")
             print(self.db)
         except Exception as err:
@@ -68,7 +68,7 @@ class AsyncQueue:
         for item in range(largest, largest - amount, -1):
             self.task_queue.add(item=QueueItem(self.get_item, item_id=item), priority=1) if item not in self.visited else ...
 
-        await self.task_queue.run(timeout=timeout)
+        await self.task_queue.run(queue_timeout=timeout)
         print(f"Made {len(self.visited)} API calls.")
         print(self.db)
 
@@ -76,8 +76,7 @@ class AsyncQueue:
 if __name__ == '__main__':
     logging.basicConfig(level=logging.INFO)
     async def main(mode: Literal['traverse', 'walk_back'] = 'traverse'):
-        async_queue = AsyncQueue(timeout=60, workers=100)
-
+        async_queue = AsyncQueue(queue_timeout=60, workers=100, absolute_timeout=80)
         match mode:
             case 'traverse':
                 await async_queue.traverse_api()
