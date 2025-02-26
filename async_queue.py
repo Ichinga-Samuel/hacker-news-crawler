@@ -10,7 +10,6 @@ logger = logging.getLogger(__name__)
 
 
 class AsyncQueue:
-
     def __init__(self, **tq_kwargs):
         self.visited = set()
         self.db = DictDB()
@@ -76,7 +75,7 @@ class AsyncQueue:
 if __name__ == '__main__':
     logging.basicConfig(level=logging.INFO)
     async def main(mode: Literal['traverse', 'walk_back'] = 'traverse'):
-        async_queue = AsyncQueue(queue_timeout=60, workers=100, absolute_timeout=80)
+        async_queue = AsyncQueue(queue_timeout=600, workers=100, absolute_timeout=100, mode='infinite')
         match mode:
             case 'traverse':
                 await async_queue.traverse_api()
