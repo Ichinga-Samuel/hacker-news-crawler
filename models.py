@@ -36,9 +36,10 @@ class Story(Item):
     score: int = 0
 
     def create_table(self):
-        return self.cursor.execute("""
-        CREATE TABLE IF NOT EXISTS story(id integer primary key, descendants integer default ?, title text default ?,
-         url text default ?, 'text' text default ?, score integer default ?, deleted boolean default ?,
+        return self.cursor.execute(f"""
+        CREATE TABLE IF NOT EXISTS story(id integer primary key, descendants integer default {self.descendants},
+         title text default {self.title},
+         url text default {self.url}, 'text' text default {self.text}, score integer default ?, deleted boolean default ?,
          by text default ?, time float default ?, dead boolean default ?, type text default ?)
          """, (self.descendants, self.title, self.url, self.text, self.score,
               self.deleted, self.by, self.time, self.dead, self.type))
