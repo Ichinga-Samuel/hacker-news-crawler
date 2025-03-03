@@ -4,12 +4,14 @@ import signal
 
 from api import API
 from dict_db import DictDB
+from save_to_db import SaveToDB
 
 
 class AsyncGather:
     def __init__(self):
         self.api = API()
         self.db = DictDB()
+        # self.db = SaveToDB()
         self.visited = set()  # keep track of visited items or users
         self.tasks: list[asyncio.Task] = []
         signal.signal(signal.SIGINT, self.sigint_handler)
@@ -18,7 +20,6 @@ class AsyncGather:
         try:
             if item in self.visited:
                 return
-
             res = await self.api.get_item(item_id=item)
             await self.db.save(data=res)
             self.visited.add(item)
@@ -70,22 +71,20 @@ class AsyncGather:
                   f" {loop.time() - start:.2f} seconds")
             print(self.db)
 
-    async def traverse_api(self, timeout=10):
+    async def traverse_api(self, timeout=600):
         s, j, n, t, a, b = await asyncio.gather(self.api.show_stories(), self.api.job_stories(), self.api.new_stories(),
                                                 self.api.top_stories(), self.api.ask_stories(), self.api.best_stories())
         stories = set(s) | set(j) | set(t) | set(a) | set(b) | set(n)
         print(f"Traversing {len(stories)} stories")
         loop = asyncio.get_running_loop()
         start = loop.time()
-
         try:
+            start = loop.time()
             self.tasks = [asyncio.create_task(self.traverse_item(item=story)) for story in stories]
-            await asyncio.wait_for(asyncio.gather(*self.tasks), timeout)
-
+            async with asyncio.timeout_at(start + timeout):
+                await asyncio.gather(*self.tasks)
         except TimeoutError as _:
             print('Timed out')
-
-
 
         except asyncio.CancelledError as _:
             print('Tasks Cancelled')

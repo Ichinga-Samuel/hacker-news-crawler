@@ -13,12 +13,8 @@ class DB:
             cls._instance.connection = sqlite3.connect(cls._instance.name)
         return cls._instance
 
-    def __init__(self, name: str = "db.sqlite3"):
-        self.name = name
-
-    def insert(self, *, table: str, data: dict):
-        self.cursor.execute(f"""INSERT INTO {table} ({','.join(data.keys())})
-          VALUES ({('?,' * len(data.values()))[:-1]})""", tuple(data.values()))
+    def __init__(self, name: str = None):
+        self.name = name or self.name
 
     @property
     def cursor(self):
