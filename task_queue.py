@@ -18,6 +18,7 @@ class QueueItem:
         self.timeout = None # timeout set with eventloop
 
     def __repr__(self):
+
         return f"{self.__class__.__name__}(task_item={self.task_item.__name__})"
 
     def __hash__(self):
@@ -36,6 +37,7 @@ class QueueItem:
         """Run the task asynchronously"""
         start = time.perf_counter()
         try:
+            # timeout or self.timeout
             async with asyncio.timeout_at(timeout or self.timeout):
                 if asyncio.iscoroutinefunction(self.task_item):
                     return await self.task_item(*self.args, **self.kwargs)
@@ -61,6 +63,7 @@ class TaskQueue:
     def __init__(self, *, size: int = 0, workers: int = 10, queue: asyncio.Queue = None, queue_timeout: int = None,
                  on_exit: Literal['cancel', 'complete_priority'] = 'complete_priority', absolute_timeout: int = None,
                  mode: Literal['finite', 'infinite'] = 'finite', worker_timeout: int = 1):
+        self.timed_out = False
         self.queue = queue or asyncio.PriorityQueue(maxsize=size)
         self.workers = workers
         self.worker_tasks = {}
@@ -99,10 +102,10 @@ class TaskQueue:
         """Worker function to run tasks in the queue."""
         while True:
             try:
-                self.check_timeout()
-                # if self.stop and self.on_exit == 'cancel':
-                #     # self.remove_worker(wid)
-                #     break
+                # print(wid)
+                if not self.check_timeout():
+                    self.remove_worker(wid)
+                    break
 
                 if self.mode == 'infinite' and self.queue.qsize() <= 1 and self.stop is False:
                     dummy = QueueItem(self.dummy_task)
@@ -126,12 +129,11 @@ class TaskQueue:
 
             except asyncio.QueueEmpty:
                 if self.stop or self.mode == "finite":
-                    print('here?')
                     self.remove_worker(wid)
                     break
 
             except asyncio.CancelledError:
-                print('Task Cancelled {}'.format(wid))
+                print('worker cancelled')
                 break
 
             except Exception as err:
@@ -150,17 +152,18 @@ class TaskQueue:
     def check_timeout(self):
         res = True
         if self.absolute_timeout is None and self.queue_timeout is None:
-            return res
+            return True
+        if self.timed_out:
+            return False
         if self.queue_timeout and (time.perf_counter() - self.start_time) > self.queue_timeout:
             self.stop = True
-            self.queue_timeout = None
             res = True
+            self.queue_timeout = False
         if self.absolute_timeout and (time.perf_counter() - self.start_time) > self.absolute_timeout:
-            print(f"Absolute Timeout reached at {time.perf_counter() - self.start_time}")
+            print(self.absolute_timeout, 'absolute timeout')
             self.stop = True
-            self.absolute_timeout = None
+            self.timed_out = True
             self.cancel()
-            self.on_exit = 'cancel'
             res = False
         return res
 
@@ -210,11 +213,14 @@ class TaskQueue:
             self._loop = asyncio.get_running_loop()
             await self.add_workers(no_of_workers=self.workers)
             self.start_timer(queue_timeout=queue_timeout, absolute_timeout=absolute_timeout, start=True)
+            # async with asyncio.timeout_at(self.task_timeout):
+            # await self.queue.join()
             self.queue_task = asyncio.create_task(self.queue.join())
             await self.queue_task
         except asyncio.TimeoutError:
             logger.warning("Timeout occurred after %d seconds, %d tasks remaining",
                            time.perf_counter() - self.start_time, self.queue.qsize())
+            self.cancel()
 
         except asyncio.CancelledError:
             logger.warning("Task Queue Cancelled after %d seconds, %d tasks remaining",
@@ -247,4 +253,5 @@ class TaskQueue:
 
     def sigint_handle(self, sig, frame):
         logger.warning("Canceling all tasks")
+        self.stop = True
         self.cancel()
