@@ -42,3 +42,4 @@ class SaveToDB:
         print(f"Saved {self.count} items.")
         for model in [Story, Comment, User, Job, Poll, PollOpt]:
             await model().show()
+        print('showing complete')
