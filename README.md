@@ -1,4 +1,4 @@
-# Data Crawling with Asyncio Queues 🚀
+# Data Scraping with Structural Concurrency  🚀
 
 A Python-based asynchronous data crawler utilizing `asyncio.Queue` to efficiently collect, manage, and prioritize
 tasks while exploring data from the Hacker News API. This project demonstrates how to use `asyncio` to handle
@@ -10,10 +10,9 @@ FIFO, and LIFO queues.
 - **Asynchronous Task Management:** Uses `asyncio.Queue` for efficient, non-blocking task scheduling.
 - **Priority Task Handling:** Ensures that critical tasks (such as saving data) are completed through the use of `asyncio.PriorityQueue`.
 - **Concurrent Data Collection:** Leverages multiple asynchronous workers to concurrently crawl and collect data from Hacker News endpoints.
-- **Graceful Shutdown:** Handles SIGINT signals for a clean exit, completing priority tasks before shutting down when necessary.
 - **Flexible Queue Types:** Supports multiple queue types (`PriorityQueue`, FIFO, LIFO) to demonstrate flexibility in task management.
 
-## Installation
+## Installation and Usage
 
 This project does not have any external dependencies or specific requirements. You can run it with the default Python environment. Simply clone the repository and start exploring!
 
@@ -24,7 +23,7 @@ git clone https://github.com/Ichinga-Samuel/hacker-news-crawler.git
 cd hacker-news-crawler
 ```
 
-## Usage
+### Usage
 
 There are no specific command line options required to run this project. Simply execute the main script:
 
@@ -32,44 +31,39 @@ There are no specific command line options required to run this project. Simply 
 python async_queue.py
 ```
 
-### First Part: Asyncio with `gather`
+## First Part: Asyncio with gather
 
-In the initial version of this project, we used `asyncio.gather` to collect and process data concurrently from various Hacker News endpoints. This approach efficiently handled multiple API requests simultaneously, enabling fast data retrieval across the `/beststories`, `/topstories`, `/newstories`, `/askstories`, `/showstories`, and `/jobstories` endpoints.
+In the initial version of this project, we used `asyncio.gather` to collect and process data concurrently from various
+Hacker News endpoints. This approach efficiently handled multiple API requests simultaneously, enabling fast data
+retrieval across the `/beststories`, `/topstories`, `/newstories`, `/askstories`, `/showstories`, and `/jobstories` endpoints.
 
-This initial implementation offered a simple and effective way to run tasks concurrently, but lacked the flexibility and control needed to handle task prioritization or manage large-scale asynchronous workflows efficiently.
+This initial implementation offered a simple and effective way to run tasks concurrently, but lacked the flexibility
+and control needed to handle task prioritization or manage large-scale asynchronous workflows efficiently.
 
-### Current Approach: Asyncio Queues
-
-In the current iteration, we replaced `asyncio.gather` with `asyncio.Queue` to better manage task flow. This version introduces task prioritization using `asyncio.PriorityQueue` while allowing the use of other queue types like FIFO and LIFO. We implemented a task queue system (`TaskQueue`) that allows tasks to be scheduled and processed asynchronously with built-in priority handling, graceful shutdowns, and timeout control.
-
-## Key Components
+## Current Approach: Asyncio Queues
+In the current iteration, we replaced `asyncio.gather` with `asyncio.Queue` to better manage task flow.
+This version introduces task prioritization using `asyncio.PriorityQueue` while allowing the use of other queue types
+like FIFO and LIFO. We implemented a task queue system (`TaskQueue`) that allows tasks to be scheduled and processed
+asynchronously with built-in priority handling, graceful shutdowns, and timeout control.
 
 ### `AsyncQueue` Class
 
-This class orchestrates the data collection and task management. It leverages `TaskQueue` to handle concurrent task execution and prioritization.
+This class orchestrates the data collection and task management. It leverages `TaskQueue` to handle concurrent task
+execution and prioritization.
 
 - **`get_user`**: Fetches and processes user data, including their submitted items.
 - **`get_item`**: Retrieves stories, comments, and jobs, while handling related data like the author, parent items, and child items (kids).
 - **`traverse_api`**: Collects a broad range of stories (e.g., top, new, best) from various Hacker News endpoints and adds them to the task queue for processing.
 - **`walk_back`**: Starts from the largest item ID in the Hacker News API and walks back through a specified number of items.
 
-### `TaskQueue` Class
+### TaskQueue Class
 
 Manages task queues and worker coroutines. It supports prioritization, timeout handling, and graceful shutdown upon receiving SIGINT signals.
 
-### `QueueItem` Class
+### QueueItem Class
 
-A wrapper for tasks added to the queue, encapsulating the coroutine to be executed and its arguments. It ensures tasks are hashable and sortable, which is critical for prioritization in `asyncio.PriorityQueue`.
-
-## Future Improvements
-
-- **Persistent Storage:** Add support for storing data in a persistent database (e.g., SQLite, MongoDB).
-- **Retry Mechanism:** Implement automatic retries for failed API requests to increase robustness.
-- **Rate Limiting:** Include rate limiting to ensure compliance with the Hacker News API usage guidelines.
-
-## Contributing
-
-Contributions are welcome! Feel free to open issues, submit pull requests, or suggest new features. Any contributions that improve the project or add valuable functionality are greatly appreciated.
+A wrapper for tasks added to the queue, encapsulating the coroutine to be executed and its arguments.
+It ensures tasks are hashable and sortable, which is critical for prioritization in `asyncio.PriorityQueue`.
 
 ## License
 

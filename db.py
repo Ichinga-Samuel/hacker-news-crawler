@@ -1,20 +1,21 @@
-from typing import Self
 import sqlite3
+from pathlib import Path
+from typing import Self
 
 
 class DB:
     connection: sqlite3.Connection
-    name: str = "db.sqlite3"
+    database: str = Path("db.sqlite3")
     _instance: Self
 
     def __new__(cls, *args, **kwargs):
         if not hasattr(cls, "_instance"):
             cls._instance = super().__new__(cls)
-            cls._instance.connection = sqlite3.connect(cls._instance.name)
+            cls._instance.connection = sqlite3.connect(cls._instance.database)
         return cls._instance
 
-    def __init__(self, name: str = None):
-        self.name = name or self.name
+    def __init__(self, database: str = None):
+        self.database = database or self.database
 
     @property
     def cursor(self):
