@@ -1,5 +1,4 @@
 import asyncio
-import signal
 import time
 from typing import Literal
 from logging import getLogger, basicConfig
@@ -10,12 +9,12 @@ from save_to_db import SaveToDB
 logger = getLogger(__name__)
 
 
-class AsyncGather:
+class AsyncGroup:
     def __init__(self):
         self.api = API()
         self.db = SaveToDB()
         self.visited = set()  # keep track of visited items or users
-        self.tasks: list[asyncio.Task] = []
+        self.task_group = asyncio.TaskGroup()
 
     async def get_user(self, *, user_id):
         try:
@@ -23,10 +22,10 @@ class AsyncGather:
             self.visited.add(res["id"])
             await self.db.save_user(data=res)
             if submissions := res.get("submitted"):
-                self.tasks.extend(
-                    asyncio.create_task(self.get_item(item_id=item))
+                [
+                    self.task_group.create_task(self.get_item(item_id=item))
                     for item in submissions
-                )
+                ]
         except Exception as err:
             logger.error("%s occurred in get_user", err)
 
@@ -39,21 +38,19 @@ class AsyncGather:
             await self.db.save_data(data=res)
             self.visited.add(item_id)
 
-            # saving user data
             if (by := res.get("by")) and by not in self.visited:
-                self.tasks.append(asyncio.create_task(self.get_user(user_id=by)))
+                self.task_group.create_task(self.get_user(user_id=by))
 
             # saving kids data
             if kids := res.get("kids"):
-                self.tasks.extend(
-                    asyncio.create_task(self.get_item(item_id=item))
+                [
+                    self.task_group.create_task(self.get_item(item_id=item))
                     for item in kids
-                    if item not in self.visited
-                )
+                ]
 
             # saving parent data
             if (parent := res.get("parent")) and parent not in self.visited:
-                self.tasks.append(asyncio.create_task(self.get_item(item_id=parent)))
+                self.task_group.create_task(self.get_item(item_id=parent))
 
         except Exception as err:
             logger.warning("%s occurred in get_item", err)
@@ -63,24 +60,26 @@ class AsyncGather:
         logger.info("Walking back from item %d to %d", largest, largest - amount)
         start = time.perf_counter()
         try:
-            self.tasks = [
-                asyncio.create_task(self.get_item(item_id=item))
-                for item in range(largest, largest - amount, -1)
-            ]
-            for task in asyncio.as_completed(self.tasks, timeout=timeout):
-                try:
-                    await task
-                except asyncio.CancelledError:
-                    ...
+            async with asyncio.timeout(timeout):
+                async with self.task_group:
+                    [
+                        self.task_group.create_task(self.get_item(item_id=item))
+                        for item in range(largest, largest - amount, -1)
+                    ]
 
         except asyncio.CancelledError:
-            logger.warning("Task cancelled after %d", time.perf_counter() - start)
+            logger.warning(
+                "Tasks cancelled after %d seconds", time.perf_counter() - start
+            )
+
+        except asyncio.TimeoutError:
+            logger.warning("Timed out after %d seconds", time.perf_counter() - start)
 
         except Exception as exe:
-            logger.error("Error: %s occurred in walk_back", exe)
+            logger.warning("Error: %s occurred in walk_back", exe)
 
         finally:
-            logger.info("Task completed after %d", time.perf_counter() - start)
+            logger.info("Tasks completed in %d", time.perf_counter() - start)
             await self.db.show()
 
     async def traverse_api(self, timeout=10):
@@ -97,22 +96,20 @@ class AsyncGather:
         start = time.perf_counter()
         try:
             async with asyncio.timeout(timeout):
-                self.tasks = [
-                    asyncio.create_task(self.get_item(item_id=story))
-                    for story in stories
-                ]
-                await asyncio.gather(*self.tasks, return_exceptions=True)
+                async with self.task_group:
+                    [
+                        self.task_group.create_task(self.get_item(item_id=item))
+                        for item in stories
+                    ]
 
         except asyncio.TimeoutError:
-            logger.warning("Timed out after %d seconds", time.perf_counter() - start)
+            logger.warning("Timed out after %d", time.perf_counter() - start)
 
         except asyncio.CancelledError:
-            logger.warning(
-                "Tasks cancelled after %d seconds", time.perf_counter() - start
-            )
+            logger.warning("Tasks cancelled after %d", time.perf_counter() - start)
 
         finally:
-            logger.info("Tasks completed after %d seconds", time.perf_counter() - start)
+            logger.info("Tasks completed after %d", time.perf_counter() - start)
             await self.db.show()
 
 
@@ -120,16 +117,16 @@ if __name__ == "__main__":
     basicConfig(level="INFO")
 
     async def main(mode: Literal["traverse", "walk_back"] = "traverse"):
-        ag = AsyncGather()
+        ag = AsyncGroup()
         match mode:
             case "traverse":
-                await ag.traverse_api(timeout=120)
+                await ag.traverse_api()
 
             case "walk_back":
                 await ag.walk_back()
 
             case _:
-                logger.info("Invalid mode specified, but running traverse")
+                logger.warning("Invalid mode specified, but running traverse")
                 await ag.traverse_api()
 
     asyncio.run(main())
