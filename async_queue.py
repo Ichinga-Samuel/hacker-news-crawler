@@ -28,7 +28,7 @@ class AsyncQueue:
                     for item in submissions
                 ]
         except Exception as err:
-            logger.error("Error: %s occured in get_user", err)
+            logger.error("Error: %s occurred in get_user", err)
 
     async def get_item(self, *, item_id):
         try:
@@ -52,7 +52,7 @@ class AsyncQueue:
                 ]
 
         except Exception as err:
-            logger.error("Error: %s occured in get_item", err)
+            logger.error("Error: %s occurred in get_item", err)
 
     async def traverse_api(self, timeout: int = None):
         try:
@@ -73,7 +73,7 @@ class AsyncQueue:
             await self.task_queue.run(queue_timeout=timeout)
             await self.db.show()
         except Exception as err:
-            logger.error("Error: %s occured in traverse_api", err)
+            logger.error("Error: %s occurred in traverse_api", err)
 
     async def walk_back(self, *, amount: int = 1000, timeout: int = 0):
         try:
@@ -88,14 +88,14 @@ class AsyncQueue:
             await self.task_queue.run(queue_timeout=timeout)
             await self.db.show()
         except Exception as err:
-            logger.error("Error: %s occured in walk_back", err)
+            logger.error("Error: %s occurred in walk_back", err)
 
 
 if __name__ == "__main__":
     basicConfig(level=INFO)
 
     async def main(mode: Literal["traverse", "walk_back"] = "traverse"):
-        async_queue = AsyncQueue(workers=2000, mode="infinite", absolute_timeout=120)
+        async_queue = AsyncQueue(mode="infinite", queue_timeout=120)
         match mode:
             case "traverse":
                 await async_queue.traverse_api()
