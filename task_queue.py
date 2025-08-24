@@ -68,12 +68,13 @@ class TaskQueue:
             on_exit (Literal['cancel', 'complete_priority']: Action to take on unfinished tasks
             mode (Literal['finite', 'infinite'] = 'finite'): Run queue in finite or infinite mode
             queue_cancelled (bool): Whether the queue was cancelled
+            max_workers (int): The maximum number of concurrent workers
     """
-    def __init__(self, *, size: int = 0, workers: int = None, queue: asyncio.Queue = None, queue_timeout: int = 0,
+    def __init__(self, *, size: int = 0, max_workers: int = None, queue: asyncio.Queue = None, queue_timeout: int = 0,
                  on_exit: Literal['cancel', 'complete_priority'] = 'complete_priority',
                  mode: Literal['finite', 'infinite'] = 'finite'):
         self.queue = queue or asyncio.PriorityQueue(maxsize=size)
-        self.workers = workers
+        self.max_workers = max_workers
         self.worker_tasks: dict[int|float, asyncio.Task] = {}
         self.queue_timeout = queue_timeout
         self.stop = False
@@ -112,7 +113,7 @@ class TaskQueue:
             if isinstance(self.queue, asyncio.PriorityQueue):
                 item = (priority, item)
             self.queue.put_nowait(item)
-            if with_new_workers:
+            if self.max_workers is None and with_new_workers:
                 self.add_workers()
         except asyncio.QueueFull:
             logger.error("Cannot add task: Queue is full")
@@ -132,8 +133,7 @@ class TaskQueue:
                     self.cancel()
 
                 if not self.stop and self.mode == 'infinite' and self.queue.qsize() <= 1:
-                    dummy = QueueItem(self.dummy_task)
-                    self.add(item=dummy, with_new_workers=False)
+                    self.add_dummy_task()
 
                 if isinstance(self.queue, asyncio.PriorityQueue):
                     _, item = self.queue.get_nowait()
@@ -147,7 +147,8 @@ class TaskQueue:
                 else:
                     self.queue.task_done()
 
-                self.add_workers()
+                if self.max_workers is None:
+                    self.add_workers()
 
             except asyncio.QueueEmpty:
                 if self.stop or self.mode == 'finite':
@@ -182,6 +183,10 @@ class TaskQueue:
         """A dummy task to make sure the queue keeps running when in infinite mode."""
         await asyncio.sleep(1)
 
+    def add_dummy_task(self):
+        dt = QueueItem(self.dummy_task)
+        self.add(item=dt, with_new_workers=False)
+
     def remove_worker(self, wid: int):
         """Remove a worker task.
         Args:
@@ -205,7 +210,7 @@ class TaskQueue:
             qs = self.queue.qsize()
             req_workers = qs - len(self.worker_tasks)
             if req_workers >= 1:
-                no_of_workers = req_workers + 3
+                no_of_workers = req_workers + 2
             else:
                 return
         ri = lambda : random.randint(999, 999_999_999) # random id
@@ -237,10 +242,16 @@ class TaskQueue:
         try:
             self.queue_timeout = queue_timeout or self.queue_timeout
             self.start_time = time.perf_counter()
+
             if self.queue_timeout:
                 asyncio.create_task(self.watch())
-            await self.queue.join()
 
+            if self.mode == 'infinite' and (len(self.worker_tasks) < 1 or self.queue.qsize() < 1):
+                self.add_dummy_task()
+                workers = self.max_workers or 1
+                self.add_workers(no_of_workers=workers)
+
+            await self.queue.join()
         except asyncio.CancelledError:
             logger.warning("Task Queue Cancelled after %d seconds, %d tasks remaining",
                            time.perf_counter() - self.start_time, self.queue.qsize())
