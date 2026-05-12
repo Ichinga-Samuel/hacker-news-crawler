@@ -1,6 +1,9 @@
 [project]
 name = "hacker-news-crawler"
 version = "0.1.0"
-description = "Add your description here"
+description = "A tutorial project demonstrating osiiso's three queue types (AsyncQueue, ThreadQueue, ProcessQueue) by crawling and analyzing the Hacker News API."
 requires-python = ">=3.13"
-dependencies = []
+dependencies = [
+    "httpx>=0.28.1",
+    "osiiso>=0.0.1a1",
+]
