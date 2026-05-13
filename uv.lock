@@ -86,9 +86,9 @@ wheels = [
 
 [[package]]
 name = "osiiso"
-version = "0.0.1a1"
+version = "0.0.1a2"
 source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/3b/f5/62433141099c22bf1ba456ebb4adab02d8169cadd833bfa5d4723ded09f4/osiiso-0.0.1a1.tar.gz", hash = "sha256:f2a68c85c27bfaec76731ecb82007a1a7b51c8f8ebfaf626c443de188f13abd2", size = 44958, upload-time = "2026-05-11T20:21:30.254Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/4b/7b/b4cc492718434670b176dca882fc88c74d74e6cd6b154d9ff7b7b8da5f76/osiiso-0.0.1a2.tar.gz", hash = "sha256:b15b2aa88661fb7e8477d6c39bd2bec251fff018e4804f7d6e945317f46df407", size = 46476, upload-time = "2026-05-12T20:31:08.574Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/af/0a/1ce3e8596a3767caff95c26fab272020d12c364040b55985e410b0d26585/osiiso-0.0.1a1-py3-none-any.whl", hash = "sha256:1f47edd384fa40c52c04883fd21740d69e2066302f8a1871c7534dc20033e75a", size = 42702, upload-time = "2026-05-11T20:21:17.536Z" },
+    { url = "https://files.pythonhosted.org/packages/7d/63/8dc36be21ddcebc561164276540a5e4c2887fa63bde3e887844ad35c1bca/osiiso-0.0.1a2-py3-none-any.whl", hash = "sha256:5bc3b9c544ab398cd93cb9263dfbc2f3070e90d7f61d663c49a8a0ea36640995", size = 44115, upload-time = "2026-05-12T20:31:05.523Z" },
 ]
